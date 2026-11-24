@@ -77,7 +77,16 @@ Send 1 to 50 LCOV, Cobertura XML, JaCoCo XML, or Go cover reports in a JSON body
 
 `exportReviews` reads one CSV or NDJSON page through the bounded transport. Export tokens require `analytics:read`. Each call returns the original text, decoded rows, dataset version, settled horizon, and an optional next cursor. CSV cells remain strings, including nested JSON cells, while NDJSON retains JSON values. Each CSV page includes its own header.
 
-To read subsequent pages, repeat the call with the returned cursor and the same dataset, window, format, and grouping. A missing next cursor marks the last page.
+To read subsequent pages manually, repeat the call with the returned cursor and the same dataset, window, format, and grouping. For bounded lazy traversal, use `iterExportPages`, which preserves those filters and normally ends when the server omits the next cursor. It rejects repeated cursors and raises a pagination-limit error only when the configured page bound is reached while another cursor remains (100 pages by default); because pages are yielded lazily, callers may have processed partial output when a traversal rejects.
+
+```typescript
+for await (const page of client.iterExportPages({
+  path: { org_id: process.env.PROOFLINE_ORGANIZATION_ID!, dataset: "reviews" },
+  query: { from: "2026-10-01T00:00:00Z", to: "2026-10-25T00:00:00Z" },
+})) {
+  process.stdout.write(page.text);
+}
+```
 
 ```typescript
 const page = await client.exportReviews({
